@@ -26,6 +26,8 @@ from functools import partial
 import random
 
 
+
+
 class FrameCorrector:
     def __init__(self, template: np.ndarray,
                  max_shifts: Tuple[int, int], strides: Tuple[int, int],

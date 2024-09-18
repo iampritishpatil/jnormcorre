@@ -697,7 +697,7 @@ def load_split_heuristic(d1, d2, T):
         new_T = 100
     else:
         new_T = 2000
-
+    
     return min(T, new_T)
 
 

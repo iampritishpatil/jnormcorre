@@ -4,7 +4,9 @@ import tifffile
 import numpy as np
 import h5py
 from typing import *
+import zarr
 
+from numpy.lib.format import open_memmap
 
 class TiffArray(lazy_data_loader):
 
@@ -169,3 +171,98 @@ class RegistrationArray(lazy_data_loader):
 
         #Register the data
         return self.registration_obj.register_frames(frames, pw_rigid = self._pw_rigid).squeeze()
+
+
+class Zarray(lazy_data_loader):
+    def __init__(self, filename: str):
+        """
+        ZarrArray data loading object. Supports loading data from zarr files.
+
+        Args:
+            filename (str): Path to file
+        """
+        self.filename = filename
+        self.zarr_file = zarr.open(self.filename, mode='r')
+
+    @property
+    def dtype(self) -> str:
+        """
+        str
+            data type
+        """
+        return np.float32
+
+    @property
+    def shape(self) -> Tuple[int, int, int]:
+        """
+        Tuple[int]
+            (n_frames, dims_x, dims_y)
+        """
+        with zarr.open(self.filename, mode='r') as zr:
+            num_frames, x, y = zr.shape
+        return num_frames, x, y
+
+    @property
+    def ndim(self) -> int:
+        """
+        int
+            Number of dimensions
+        """
+        return len(self.shape)
+
+    def _compute_at_indices(self, indices: Union[list, int, slice]) -> np.ndarray:
+        zr = self.zarr_file
+        if isinstance(indices, int):
+            data = zr[indices, :, :].squeeze()
+        elif isinstance(indices, list):
+            data = zr[indices, :, :].squeeze()
+        else:
+            indices_list = list(range(indices.start or 0, indices.stop or self.shape[0], indices.step or 1))
+            data = zr[indices_list, :, :].squeeze()
+        return data.astype(self.dtype)
+    
+
+class LazyNpy(lazy_data_loader):
+    def __init__(self, filename: str):
+        """
+        NpyArray data loading object. Supports loading data from npy files.
+
+        Args:
+            filename (str): Path to file
+        """
+        self.filename = filename
+        # self.np_file = np.memmap(self.filename, mode='r')
+        self.np_file = open_memmap(self.filename, mode='r')  
+
+    @property
+    def dtype(self) -> str:
+        """
+        str
+            data type
+        """
+        return np.float32
+    
+    @property
+    def shape(self) -> Tuple[int, int, int]:
+        """
+        Tuple[int]
+            (n_frames, dims_x, dims_y)
+        """
+        
+        return self.np_file.shape
+    
+    @property
+    def ndim(self) -> int:
+        """
+        int
+            Number of dimensions
+        """
+        return len(self.shape)
+    
+    def _compute_at_indices(self, indices: Union[list, int, slice]) -> np.ndarray:
+        data = self.np_file[indices, :, :]
+        return data.astype(self.dtype)
+    
+
+
+    
